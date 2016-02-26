@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+	<head></head>
+	<body>
+		<form action="test_chunk_upload.php" id="form">
+			<progress value="0" max="100" style="width:100%" class="mb-5 hide" id="resumeUploadProgress"></progress>
+			
+			<input type="file" id="thefile" />
+			<button type="submit">Submit</button>
+		</form>
+		
+		<script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+		<script type="text/javascript">
+		jQuery(function($){
+			var fr = new FileReader(),
+			theFileStr,
+			chunkSize = 1024, // update this size to increase the upload chunk
+			fileExtension;
+			
+			$('#thefile').change(function(evt){
+				var theFile = evt.target.files[0];
+				fr.readAsDataURL( theFile );
+				
+				fileExtension = theFile.name.substr(theFile.name.lastIndexOf('.')+1, theFile.name.length).toLowerCase();
+			});
+			
+			fr.onloadend = function(){
+				theFileStr = fr.result;
+			}
+			
+			$('#form').submit(function(){
+				var theFile2 = theFileStr.substr( theFileStr.indexOf(',')+1, theFileStr.length ),
+				t = $(this);
+				
+				var noOfChunks = Math.ceil( theFile2.length / chunkSize ),
+				i=0;
+				
+				function postFileChunk(){
+					var _data = {},
+					_start = i * chunkSize,
+					_end;
+					
+					$('#resumeUploadProgress').attr('value', ( 100 / noOfChunks ) * i );
+					
+					if( i == noOfChunks-1 ){
+						_data.lastchunk = 1;
+						_data.extension = fileExtension
+					}
+					
+					_end = i == noOfChunks ? theFile2.length : chunkSize;
+					_data.filechunk = theFile2.substr( _start, _end );
+					
+					$.post(t.attr('action'), _data, function(response){
+						console.log(response.length);
+						console.log(response);
+						
+						if( i != noOfChunks-1 ){
+							i++;
+							postFileChunk();
+						}else{
+							$('#resumeUploadProgress').attr('value', 100);
+						}
+					});
+				}
+				postFileChunk();
+				
+				return false;
+			});
+		});
+		</script>
+	</body>
+</html>
